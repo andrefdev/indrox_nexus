@@ -150,6 +150,20 @@ export default function InventarioPage() {
     })
   }
 
+  const parseStoragePathFromPublicUrl = (url: string) => {
+    try {
+      const u = new URL(url)
+      const marker = "/product-images/"
+      const idx = u.pathname.indexOf(marker)
+      if (idx >= 0) {
+        return u.pathname.substring(idx + marker.length)
+      }
+      return ""
+    } catch {
+      return ""
+    }
+  }
+
   const openNew = () => {
     setEditingItem(null)
     setForm({ sku: "", name: "", category: "", warehouse: "", status: "", stock: 0, min_stock_threshold: 0, rotation_rate: null, image_url: "" })
@@ -167,6 +181,10 @@ export default function InventarioPage() {
   }
 
   const saveItem = async () => {
+    if (!isAdmin) {
+      setError("Permiso requerido para guardar cambios")
+      return
+    }
     setError("")
     try {
       // Subir imagen si corresponde
@@ -243,6 +261,35 @@ export default function InventarioPage() {
       setDrawerOpen(false)
     } catch (e: any) {
       setError(e?.message || "Error al guardar el ítem")
+    }
+  }
+
+  const deleteItem = async (item: InventoryItem) => {
+    if (!isAdmin) {
+      setError("Permiso requerido para eliminar")
+      return
+    }
+    const ok = window.confirm(`¿Eliminar producto ${item.sku} - ${item.name}?`)
+    if (!ok) return
+    setError("")
+    try {
+      const { error: delErr } = await supabase
+        .from("nc_inventory_items")
+        .delete()
+        .eq("id", item.id)
+      if (delErr) throw new Error(delErr.message)
+
+      // Limpieza opcional de imagen en Storage
+      if (item.image_url) {
+        const path = parseStoragePathFromPublicUrl(item.image_url)
+        if (path) {
+          await supabase.storage.from("product-images").remove([path])
+        }
+      }
+
+      setItems((prev) => prev.filter((it) => it.id !== item.id))
+    } catch (e: any) {
+      setError(e?.message || "Error al eliminar el ítem")
     }
   }
 
@@ -356,7 +403,9 @@ export default function InventarioPage() {
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
             <CardTitle>Inventario</CardTitle>
-            <Button variant="default" onClick={openNew}>Nuevo producto</Button>
+            {isAdmin && (
+              <Button variant="default" onClick={openNew}>Nuevo producto</Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -373,14 +422,14 @@ export default function InventarioPage() {
                 <TableHead className="text-right">Mínimo</TableHead>
                 <TableHead className="text-right">Rotación</TableHead>
                 <TableHead className="text-right">Criticidad</TableHead>
-                <TableHead className="text-right">Acciones</TableHead>
+                {isAdmin && <TableHead className="text-right">Acciones</TableHead>}
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow><TableCell colSpan={10} className="p-4">Cargando...</TableCell></TableRow>
               ) : withCriticality.length === 0 ? (
-                <TableRow><TableCell colSpan={11} className="p-4">Sin resultados</TableCell></TableRow>
+                <TableRow><TableCell colSpan={isAdmin ? 11 : 10} className="p-4">Sin resultados</TableCell></TableRow>
               ) : withCriticality.map((i) => (
                 <TableRow key={i.id}>
                   <TableCell>{i.image_url ? (<img src={i.image_url} alt={i.name} className="h-10 w-10 object-cover rounded" />) : "—"}</TableCell>
@@ -393,9 +442,14 @@ export default function InventarioPage() {
                   <TableCell className="text-right">{i.min_stock_threshold}</TableCell>
                   <TableCell className="text-right">{i.rotation_rate ?? "—"}</TableCell>
                   <TableCell className="text-right">{i.criticality}</TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => openEdit(i)}>Editar</Button>
-                  </TableCell>
+                  {isAdmin && (
+                    <TableCell className="text-right">
+                      <div className="flex gap-2 justify-end">
+                        <Button variant="outline" size="sm" onClick={() => openEdit(i)}>Editar</Button>
+                        <Button variant="destructive" size="sm" onClick={() => deleteItem(i)}>Eliminar</Button>
+                      </div>
+                    </TableCell>
+                  )}
                 </TableRow>
               ))}
             </TableBody>
