@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
     const router = useRouter();
@@ -36,6 +37,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
                     {children}
                 </div>
             </SidebarInset>
+            <Toaster richColors position="top-right" />
         </SidebarProvider>
     );
 }
