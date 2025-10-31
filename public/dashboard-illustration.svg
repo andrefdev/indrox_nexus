@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="title desc">
+  <title id="title">Dashboard Illustration</title>
+  <desc id="desc">Minimal dashboard-themed illustration with charts and panels.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#EEF2FF"/>
+      <stop offset="100%" stop-color="#E6E9F5"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#4F46E5"/>
+      <stop offset="100%" stop-color="#22C55E"/>
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect x="0" y="0" width="800" height="500" fill="url(#bg)"/>
+
+  <!-- Monitor frame -->
+  <rect x="120" y="70" width="560" height="340" rx="12" fill="#ffffff" stroke="#CBD5E1" stroke-width="2"/>
+  <rect x="120" y="70" width="560" height="40" rx="12" fill="#F1F5F9"/>
+  <circle cx="150" cy="90" r="6" fill="#EF4444"/>
+  <circle cx="170" cy="90" r="6" fill="#F59E0B"/>
+  <circle cx="190" cy="90" r="6" fill="#10B981"/>
+
+  <!-- Sidebar -->
+  <rect x="140" y="130" width="120" height="260" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="156" y="150" width="88" height="14" rx="7" fill="#E2E8F0"/>
+  <rect x="156" y="180" width="88" height="14" rx="7" fill="#E2E8F0"/>
+  <rect x="156" y="210" width="88" height="14" rx="7" fill="#E2E8F0"/>
+  <rect x="156" y="240" width="88" height="14" rx="7" fill="#E2E8F0"/>
+  <rect x="156" y="270" width="88" height="14" rx="7" fill="#E2E8F0"/>
+  <rect x="156" y="300" width="88" height="14" rx="7" fill="#E2E8F0"/>
+
+  <!-- Main panels -->
+  <rect x="280" y="130" width="380" height="120" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+  <rect x="280" y="270" width="380" height="120" rx="8" fill="#F8FAFC" stroke="#E2E8F0"/>
+
+  <!-- Line chart in top panel -->
+  <polyline points="300,220 340,190 380,200 420,170 460,180 500,160 540,175 580,150 630,165"
+            fill="none" stroke="url(#accent)" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="340" cy="190" r="4" fill="#4F46E5"/>
+  <circle cx="420" cy="170" r="4" fill="#4F46E5"/>
+  <circle cx="500" cy="160" r="4" fill="#4F46E5"/>
+  <circle cx="580" cy="150" r="4" fill="#4F46E5"/>
+
+  <!-- Bar chart in bottom panel -->
+  <rect x="305" y="350" width="28" height="30" fill="#A5B4FC" rx="4"/>
+  <rect x="345" y="340" width="28" height="40" fill="#818CF8" rx="4"/>
+  <rect x="385" y="320" width="28" height="60" fill="#6366F1" rx="4"/>
+  <rect x="425" y="300" width="28" height="80" fill="#4F46E5" rx="4"/>
+  <rect x="465" y="330" width="28" height="50" fill="#22C55E" rx="4"/>
+  <rect x="505" y="360" width="28" height="20" fill="#34D399" rx="4"/>
+  <rect x="545" y="345" width="28" height="35" fill="#10B981" rx="4"/>
+  <rect x="585" y="310" width="28" height="70" fill="#0EA5E9" rx="4"/>
+
+  <!-- Legend elements -->
+  <rect x="300" y="150" width="80" height="12" rx="6" fill="#E2E8F0"/>
+  <rect x="390" y="150" width="100" height="12" rx="6" fill="#E2E8F0"/>
+  <rect x="500" y="150" width="80" height="12" rx="6" fill="#E2E8F0"/>
+
+  <!-- Base stand -->
+  <rect x="350" y="420" width="100" height="8" rx="4" fill="#CBD5E1"/>
+  <rect x="310" y="430" width="180" height="12" rx="6" fill="#94A3B8"/>
+
+  <!-- Decorative shapes -->
+  <circle cx="690" cy="90" r="16" fill="#E0E7FF"/>
+  <circle cx="90" cy="420" r="10" fill="#E0F2FE"/>
+  <circle cx="720" cy="430" r="10" fill="#DCFCE7"/>
+</svg>
