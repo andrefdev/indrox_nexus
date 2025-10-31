@@ -1,5 +1,8 @@
 "use client"
 import React, { useEffect, useMemo, useState } from "react"
+import { useForm } from "react-hook-form"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
 import { createSupabaseClient } from "@/lib/supabase/client"
 import { useAuth } from "@/context/auth-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -14,12 +17,14 @@ type InventoryItem = {
   id: string
   sku: string
   name: string
+  description?: string | null
   category: string
   warehouse: string
   status: string
   stock: number
   min_stock_threshold: number
   rotation_rate: number | null
+  price?: number | null
   image_url?: string | null
 }
 
@@ -36,19 +41,39 @@ export default function InventarioPage() {
   const [isAdmin, setIsAdmin] = useState(false)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null)
-  const [form, setForm] = useState<Partial<InventoryItem>>({
-    sku: "",
-    name: "",
-    category: "",
-    warehouse: "",
-    status: "",
-    stock: 0,
-    min_stock_threshold: 0,
-    rotation_rate: null,
-    image_url: "",
+  const inventorySchema = z.object({
+    sku: z.string().min(1, "SKU es requerido"),
+    name: z.string().min(1, "Nombre es requerido"),
+    description: z.string().optional(),
+    category: z.string().min(1, "Categoría es requerida"),
+    warehouse: z.string().min(1, "Bodega es requerida"),
+    status: z.string().min(1, "Estado es requerido"),
+    stock: z.coerce.number().min(0, "Stock debe ser 0 o mayor"),
+    min_stock_threshold: z.coerce.number().min(0, "Mínimo debe ser 0 o mayor"),
+    rotation_rate: z.coerce.number().optional(),
+    price: z.coerce.number().min(0, "Precio debe ser 0 o mayor").optional(),
+    image_url: z.string().url().optional(),
+  })
+
+  const { register, handleSubmit, formState: { errors }, reset, watch } = useForm<any>({
+    resolver: zodResolver(inventorySchema),
+    defaultValues: {
+      sku: "",
+      name: "",
+      description: "",
+      category: "",
+      warehouse: "",
+      status: "",
+      stock: 0,
+      min_stock_threshold: 0,
+      rotation_rate: null,
+      price: 0,
+      image_url: "",
+    },
   })
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string>("")
+  const [notice, setNotice] = useState<string>("")
 
   useEffect(() => {
     const load = async () => {
@@ -166,7 +191,7 @@ export default function InventarioPage() {
 
   const openNew = () => {
     setEditingItem(null)
-    setForm({ sku: "", name: "", category: "", warehouse: "", status: "", stock: 0, min_stock_threshold: 0, rotation_rate: null, image_url: "" })
+    reset({ sku: "", name: "", description: "", category: "", warehouse: "", status: "", stock: 0, min_stock_threshold: 0, rotation_rate: null, price: 0, image_url: "" })
     setImageFile(null)
     setImagePreview("")
     setDrawerOpen(true)
@@ -174,24 +199,37 @@ export default function InventarioPage() {
 
   const openEdit = (item: InventoryItem) => {
     setEditingItem(item)
-    setForm({ ...item })
+    reset({
+      sku: item.sku,
+      name: item.name,
+      description: item.description ?? "",
+      category: item.category,
+      warehouse: item.warehouse,
+      status: item.status,
+      stock: item.stock ?? 0,
+      min_stock_threshold: item.min_stock_threshold ?? 0,
+      rotation_rate: item.rotation_rate ?? null,
+      price: item.price ?? 0,
+      image_url: item.image_url ?? "",
+    })
     setImageFile(null)
     setImagePreview(item.image_url || "")
     setDrawerOpen(true)
   }
 
-  const saveItem = async () => {
+  const saveItem = async (values: any) => {
     if (!isAdmin) {
       setError("Permiso requerido para guardar cambios")
       return
     }
     setError("")
+    setNotice("")
     try {
       // Subir imagen si corresponde
-      let imgUrl: string | undefined = form.image_url || undefined
+      let imgUrl: string | undefined = values.image_url || undefined
       if (imageFile) {
         const ext = imageFile.name.split(".").pop() || "jpg"
-        const path = `inventory/${(form.sku || "no-sku").replace(/[^a-zA-Z0-9-_]/g, "_")}_${Date.now()}.${ext}`
+        const path = `inventory/${(values.sku || "no-sku").replace(/[^a-zA-Z0-9-_]/g, "_")}_${Date.now()}.${ext}`
         const { error: upErr } = await supabase.storage.from("product-images").upload(path, imageFile)
         if (upErr) throw new Error(upErr.message)
         const { data: pub } = await supabase.storage.from("product-images").getPublicUrl(path)
@@ -199,14 +237,16 @@ export default function InventarioPage() {
       }
 
       const payload: any = {
-        sku: form.sku,
-        name: form.name,
-        category: form.category,
-        warehouse: form.warehouse,
-        status: form.status,
-        stock: Number(form.stock || 0),
-        min_stock_threshold: Number(form.min_stock_threshold || 0),
-        rotation_rate: form.rotation_rate ?? null,
+        sku: values.sku,
+        name: values.name,
+        description: values.description,
+        category: values.category,
+        warehouse: values.warehouse,
+        status: values.status,
+        stock: Number(values.stock || 0),
+        min_stock_threshold: Number(values.min_stock_threshold || 0),
+        rotation_rate: values.rotation_rate ?? null,
+        price: values.price != null ? Number(values.price) : null,
       }
       if (imgUrl) payload.image_url = imgUrl
 
@@ -217,7 +257,7 @@ export default function InventarioPage() {
           .update(payload)
           .eq("id", editingItem.id)
           .select()
-        // Fallback si image_url no existe
+        // Fallback si algunas columnas no existen
         if (updErr?.message?.includes("column") && updErr?.message?.includes("image_url")) {
           delete payload.image_url
           const { data: data2, error: updErr2 } = await supabase
@@ -229,6 +269,17 @@ export default function InventarioPage() {
           // Actualiza estado local
           const updated = data2?.[0]
           setItems((prev) => prev.map((it) => (it.id === editingItem.id ? { ...it, ...updated, image_url: imgUrl ?? it.image_url } : it)))
+        } else if (updErr?.message?.includes("column") && (updErr?.message?.includes("description") || updErr?.message?.includes("price"))) {
+          delete payload.description
+          delete payload.price
+          const { data: data3, error: updErr3 } = await supabase
+            .from("nc_inventory_items")
+            .update(payload)
+            .eq("id", editingItem.id)
+            .select()
+          if (updErr3) throw new Error(updErr3.message)
+          const updated = data3?.[0]
+          setItems((prev) => prev.map((it) => (it.id === editingItem.id ? { ...it, ...updated } : it)))
         } else if (updErr) {
           throw new Error(updErr.message)
         } else {
@@ -250,6 +301,16 @@ export default function InventarioPage() {
           if (insErr2) throw new Error(insErr2.message)
           const created = data2?.[0]
           setItems((prev) => [{ ...created, image_url: imgUrl }, ...prev])
+        } else if (insErr?.message?.includes("column") && (insErr?.message?.includes("description") || insErr?.message?.includes("price"))) {
+          delete payload.description
+          delete payload.price
+          const { data: data3, error: insErr3 } = await supabase
+            .from("nc_inventory_items")
+            .insert(payload)
+            .select()
+          if (insErr3) throw new Error(insErr3.message)
+          const created = data3?.[0]
+          setItems((prev) => [created as InventoryItem, ...prev])
         } else if (insErr) {
           throw new Error(insErr.message)
         } else {
@@ -259,6 +320,7 @@ export default function InventarioPage() {
       }
 
       setDrawerOpen(false)
+      setNotice(editingItem ? "Producto actualizado correctamente" : "Producto creado correctamente")
     } catch (e: any) {
       setError(e?.message || "Error al guardar el ítem")
     }
@@ -301,6 +363,8 @@ export default function InventarioPage() {
           Última sincronización: {lastSync ? new Date(lastSync).toLocaleString() : "—"}
         </div>
       </div>
+
+      {notice && <div className="text-green-600 text-sm">{notice}</div>}
 
       {error && <div className="text-red-600 text-sm">{error}</div>}
 
@@ -403,9 +467,7 @@ export default function InventarioPage() {
         <CardHeader className="border-b">
           <div className="flex items-center justify-between">
             <CardTitle>Inventario</CardTitle>
-            {isAdmin && (
-              <Button variant="default" onClick={openNew}>Nuevo producto</Button>
-            )}
+            <Button variant="default" onClick={openNew}>Nuevo producto</Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -466,35 +528,51 @@ export default function InventarioPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="sku">SKU</Label>
-              <Input id="sku" value={form.sku || ""} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
+              <Input id="sku" {...register("sku")} />
+              {errors.sku && <span className="text-xs text-destructive">{errors.sku.message as string}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="name">Nombre</Label>
-              <Input id="name" value={form.name || ""} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+              <Input id="name" {...register("name")} />
+              {errors.name && <span className="text-xs text-destructive">{errors.name.message as string}</span>}
+            </div>
+            <div className="flex flex-col gap-2 md:col-span-2">
+              <Label htmlFor="description">Descripción</Label>
+              <Input id="description" {...register("description")} />
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="category">Categoría</Label>
-              <Input id="category" value={form.category || ""} onChange={(e) => setForm({ ...form, category: e.target.value })} />
+              <Input id="category" {...register("category")} />
+              {errors.category && <span className="text-xs text-destructive">{errors.category.message as string}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="warehouse">Bodega</Label>
-              <Input id="warehouse" value={form.warehouse || ""} onChange={(e) => setForm({ ...form, warehouse: e.target.value })} />
+              <Input id="warehouse" {...register("warehouse")} />
+              {errors.warehouse && <span className="text-xs text-destructive">{errors.warehouse.message as string}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="status">Estado</Label>
-              <Input id="status" value={form.status || ""} onChange={(e) => setForm({ ...form, status: e.target.value })} />
+              <Input id="status" {...register("status")} />
+              {errors.status && <span className="text-xs text-destructive">{errors.status.message as string}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="stock">Stock</Label>
-              <Input id="stock" type="number" value={String(form.stock ?? 0)} onChange={(e) => setForm({ ...form, stock: Number(e.target.value) })} />
+              <Input id="stock" type="number" {...register("stock", { valueAsNumber: true })} />
+              {errors.stock && <span className="text-xs text-destructive">{errors.stock.message as string}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="min">Mínimo</Label>
-              <Input id="min" type="number" value={String(form.min_stock_threshold ?? 0)} onChange={(e) => setForm({ ...form, min_stock_threshold: Number(e.target.value) })} />
+              <Input id="min" type="number" {...register("min_stock_threshold", { valueAsNumber: true })} />
+              {errors.min_stock_threshold && <span className="text-xs text-destructive">{errors.min_stock_threshold.message as string}</span>}
             </div>
             <div className="flex flex-col gap-2">
               <Label htmlFor="rotation">Rotación</Label>
-              <Input id="rotation" type="number" step="0.01" value={String(form.rotation_rate ?? "")} onChange={(e) => setForm({ ...form, rotation_rate: e.target.value ? Number(e.target.value) : null })} />
+              <Input id="rotation" type="number" step="0.01" {...register("rotation_rate", { valueAsNumber: true })} />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="price">Precio</Label>
+              <Input id="price" type="number" step="0.01" {...register("price", { valueAsNumber: true })} />
+              {errors.price && <span className="text-xs text-destructive">{errors.price.message as string}</span>}
             </div>
             <div className="flex flex-col gap-2 md:col-span-2">
               <Label htmlFor="image">Imagen</Label>
@@ -521,12 +599,12 @@ export default function InventarioPage() {
             </div>
           </div>
           <DrawerFooter>
-            <div className="flex gap-2 justify-end">
+            <form className="flex gap-2 justify-end" onSubmit={handleSubmit(saveItem)}>
               <DrawerClose asChild>
-                <Button variant="outline">Cancelar</Button>
+                <Button type="button" variant="outline">Cancelar</Button>
               </DrawerClose>
-              <Button onClick={saveItem}>{editingItem ? "Guardar cambios" : "Crear"}</Button>
-            </div>
+              <Button type="submit">{editingItem ? "Guardar cambios" : "Crear"}</Button>
+            </form>
             {error && <div className="text-red-600 text-sm">{error}</div>}
           </DrawerFooter>
         </DrawerContent>

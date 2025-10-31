@@ -6,6 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import BuildProImage from "@/assets/icons/BuildPro.svg"
 import NeuroCoreImage from "@/assets/icons/NeuroCore.svg"
+import { createSupabaseClient } from "@/lib/supabase/client"
 
 type ServiceCode = "buildpro" | "neurocore"
 
@@ -51,9 +52,18 @@ export default function DashboardPage() {
     load()
   }, [])
 
-  const go = (s: ServiceCode) => {
+  const go = async (s: ServiceCode) => {
     try {
       localStorage.setItem("selected-service", s)
+    } catch {}
+    // Broadcast para actualizar ícono de barra lateral en tiempo real
+    try {
+      const supabase = createSupabaseClient()
+      const channel = supabase.channel("ui-sync")
+      await channel.subscribe()
+      await channel.send({ type: "broadcast", event: "service-selected", payload: { service: s } })
+      // No necesitamos mantener el canal abierto aquí
+      supabase.removeChannel(channel)
     } catch {}
     const meta = serviceMeta[s]
     if (meta) router.push(meta.href)

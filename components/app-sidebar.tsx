@@ -29,6 +29,7 @@ import { getMenuByServices } from "@/lib/sidebar/menu-logic"
 import Link from "next/link"
 import Image from "next/image"
 import { useAuth } from "@/context/auth-context"
+import { createSupabaseClient } from "@/lib/supabase/client"
 import {
   Sidebar,
   SidebarContent,
@@ -149,6 +150,43 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (s) setSelectedService(s)
     } catch {}
   }, [])
+
+  // Realtime: suscripción a cambios de servicio seleccionado
+  React.useEffect(() => {
+    const supabase = createSupabaseClient()
+    const channel = supabase.channel("ui-sync")
+      .on("broadcast", { event: "service-selected" }, (payload: any) => {
+        const svc = payload?.payload?.service
+        if (svc && (svc === "buildpro" || svc === "neurocore")) {
+          setSelectedService(svc)
+        }
+      })
+      .subscribe()
+
+    // Fallback: escuchar cambios en localStorage (entre pestañas)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "selected-service" && e.newValue) {
+        setSelectedService(e.newValue)
+      }
+    }
+    window.addEventListener("storage", onStorage)
+
+    // Fallback adicional: polling suave en la misma pestaña
+    const interval = setInterval(() => {
+      try {
+        const s = localStorage.getItem("selected-service")
+        if (s && s !== selectedService) setSelectedService(s)
+      } catch {}
+    }, 2000)
+
+    return () => {
+      try {
+        supabase.removeChannel(channel)
+      } catch {}
+      window.removeEventListener("storage", onStorage)
+      clearInterval(interval)
+    }
+  }, [selectedService])
 
   const serviceIconSrc = selectedService === "buildpro" ? "/icons/BuildPro.svg" : selectedService === "neurocore" ? "/icons/NeuroCore.svg" : null
   const serviceHomeHref = selectedService === "buildpro" ? "/buildpro/pagos" : selectedService === "neurocore" ? "/neurocore/inventario" : "/dashboard"
