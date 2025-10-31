@@ -82,7 +82,7 @@ export function LoginForm({
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
       <Card className="overflow-hidden p-0">
-        <CardContent className="grid p-0 md:grid-cols-2">
+        <CardContent className="grid p-0 md:grid-cols-[1fr_max-content]">
           <form className="p-6 md:p-8" onSubmit={handleSubmit}>
             <FieldGroup>
               <div className="flex flex-col items-center gap-2 text-center">
@@ -127,11 +127,11 @@ export function LoginForm({
               {/* Intencionalmente sin enlaces auxiliares para mantener login solo por correo */}
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:block h-full w-full overflow-hidden">
+          <div className="bg-muted hidden md:flex md:h-[400px] items-center justify-center overflow-hidden">
             <Image
               src={Portada}
               alt="Ilustración temática de dashboard"
-              className="absolute inset-0 h-full w-full dark:brightness-[0.3] dark:grayscale"
+              className="h-[400px] w-auto object-contain dark:brightness-[0.3] dark:grayscale"
             />
           </div>
         </CardContent>

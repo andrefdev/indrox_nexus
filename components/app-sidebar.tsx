@@ -27,6 +27,7 @@ import { NavUser } from "@/components/nav-user"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getMenuByServices } from "@/lib/sidebar/menu-logic"
 import Link from "next/link"
+import Image from "next/image"
 import { useAuth } from "@/context/auth-context"
 import {
   Sidebar,
@@ -140,6 +141,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 
   const menus = React.useMemo(() => getMenuByServices(services as any), [services])
 
+  // Detectar servicio seleccionado en localStorage
+  const [selectedService, setSelectedService] = React.useState<string | null>(null)
+  React.useEffect(() => {
+    try {
+      const s = localStorage.getItem("selected-service")
+      if (s) setSelectedService(s)
+    } catch {}
+  }, [])
+
+  const serviceIconSrc = selectedService === "buildpro" ? "/icons/BuildPro.svg" : selectedService === "neurocore" ? "/icons/NeuroCore.svg" : null
+  const serviceHomeHref = selectedService === "buildpro" ? "/buildpro/pagos" : selectedService === "neurocore" ? "/neurocore/inventario" : "/dashboard"
+
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>
@@ -149,8 +162,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               asChild
               className="data-[slot=sidebar-menu-button]:p-1.5!"
             >
-              <Link href="/neurocore/ventas">
-                <IconInnerShadowTop className="size-5!" />
+              <Link href={serviceHomeHref}>
+                {serviceIconSrc ? (
+                  <Image src={serviceIconSrc} alt="Servicio" width={20} height={20} />
+                ) : (
+                  <IconInnerShadowTop className="size-5!" />
+                )}
                 <span className="text-base font-semibold">indrox dashboard</span>
               </Link>
             </SidebarMenuButton>
